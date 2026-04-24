@@ -29,7 +29,8 @@ def vis(x,y,z, date, ind=False, asp=False, Verdose=False):
             ax2.text(xi, yi, str(i), fontsize=9, color='black')
     ax2.set_xlabel('X (mm)')
     ax2.set_ylabel('Y (mm)')
-    ax2.set_aspect("equal")
+    if asp: 
+        ax2.set_aspect("equal")
     ax2.grid()
 
     # XZ plane
@@ -83,9 +84,11 @@ def svd_rotate(ref, pts):
 
 
 def surfacefit(x, y, z, method='cubic', gridsize=200):
+    xi = np.linspace(-400, 400, gridsize)
+    yi = np.linspace(-400, 400, gridsize)
     
-    xi = np.linspace(min(x), max(x), gridsize)
-    yi = np.linspace(min(y), max(y), gridsize)
+    # xi = np.linspace(min(x), max(x), gridsize)
+    # yi = np.linspace(min(y), max(y), gridsize)
     Xg, Yg = np.meshgrid(xi, yi)
 
     Zg = griddata(
@@ -96,3 +99,57 @@ def surfacefit(x, y, z, method='cubic', gridsize=200):
     )
 
     return Xg, Yg, Zg
+
+
+def write_txt_from_arrays(filename, x, y, z, date):
+    data = np.column_stack((x, y, z))
+    np.savetxt(f"Data/HighPressureTesting-{date}/"+filename, data, fmt="%.6f", delimiter="\t")
+
+
+def linear_transformation(refs, arr, indr, inda):
+    x_ref, y_ref = refs[indr,0], refs[indr,1]
+    x_arr, y_arr = arr[inda,0], arr[inda,1]
+
+    dx = x_ref - x_arr
+    dy = y_ref - y_arr
+
+    return arr[:,0] + dx, arr[:,1] + dy
+
+def align_points_2d(refs, arr):
+    c_ref = refs.mean(axis=0)
+    c_arr = arr.mean(axis=0)
+
+    X = refs - c_ref
+    Y = arr - c_arr
+
+    H = Y.T @ X
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+
+    if np.linalg.det(R) < 0:
+        Vt[1, :] *= -1
+        R = Vt.T @ U.T
+
+    rotated = (R @ arr.T).T 
+
+    return rotated, R
+
+import numpy as np
+
+def circleRadius(b, c, d):
+  '''Ref :https://stackoverflow.com/questions/52990094/calculate-circle-given-3-points-code-explanation '''
+  temp = c[0]**2 + c[1]**2
+  bc = (b[0]**2 + b[1]**2 - temp) / 2
+  cd = (temp - d[0]**2 - d[1]**2) / 2
+  det = (b[0] - c[0]) * (c[1] - d[1]) - (c[0] - d[0]) * (b[1] - c[1])
+
+  if abs(det) < 1.0e-10:
+    return None
+
+  # Center of circle
+  cx = (bc*(c[1] - d[1]) - cd*(b[1] - c[1])) / det
+  cy = ((b[0] - c[0]) * cd - (c[0] - d[0]) * bc) / det
+
+  radius = ((cx - b[0])**2 + (cy - b[1])**2)**.5
+
+  return cx, cy, radius
