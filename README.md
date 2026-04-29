@@ -9,8 +9,10 @@ For measurements of curved 2D surfaces (e.g. Radius of Curvature measurements of
 
 - #### CleaningData 
     From data with noise and fake points, select points of interests and save in a coordinats defined by points of interests. This will create a new text file that only store selected data points. 
-    This notebook read-in raw data, select reference bar points, 
+    This notebook read-in raw data, select reference bar points, rotate based on SVD from selected data, selection of points of interest. 
+    
 - #### Ring Aligntment 
+    Calibrate coordinates s.t. ring points align over each data sets. 
 
 \
 User input and lines to be checked manually is indicated as ''##USER INPUT''. Those lines are planned to be improved. 
