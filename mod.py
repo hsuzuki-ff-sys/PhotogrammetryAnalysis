@@ -101,6 +101,41 @@ def surfacefit(x, y, z, method='cubic', gridsize=200):
     return Xg, Yg, Zg
 
 
+from numpy.polynomial.polynomial import polyvander2d 
+def even_polyfit(x, y, z, order=4, gridsize=200): 
+    if order% 2 !=0 : 
+        raise ValueError("Polynomial Order have to be even.")
+    
+    # get Vandermonde matrix 
+    # https://numpy.org/doc/2.2/reference/generated/numpy.polynomial.polynomial.polyvander2d.html 
+    vander = polyvander2d(x, y, [order, order])
+
+    # get even terms
+    px, py = np.meshgrid(np.arange(order + 1), np.arange(order + 1), indexing='ij')
+    even_mask = (px % 2 == 0) & (py % 2 == 0)
+    mask = even_mask.ravel()
+    powers = list(zip(px[even_mask].ravel(), py[even_mask].ravel()))
+
+    V = vander[:, mask]
+
+    # fit least squares
+    coeffs, _, _, _  = np.linalg.lstsq(V, z, rcond=None)
+
+    xi = np.linspace(-400, 400, gridsize)
+    yi = np.linspace(-400, 400, gridsize)
+
+    # xi = np.linspace(min(x), max(x), gridsize)
+    # yi = np.linspace(min(y), max(y), gridsize)
+
+    Xg, Yg = np.meshgrid(xi, yi)
+
+    Zg = np.zeros_like(Xg)
+    for c, (px, py) in zip(coeffs, powers):
+        Zg += c * (Xg**px) * (Yg**py)
+
+    return Xg, Yg, Zg
+
+
 def write_txt_from_arrays(filename, x, y, z, date):
     data = np.column_stack((x, y, z))
     np.savetxt(f"Data/HighPressureTesting-{date}/"+filename, data, fmt="%.6f", delimiter="\t")
@@ -153,3 +188,29 @@ def circleRadius(b, c, d):
   radius = ((cx - b[0])**2 + (cy - b[1])**2)**.5
 
   return cx, cy, radius
+
+def min_gradient(x, y):
+    '''This function find a x axis position where gradient of the curve is 0. 
+    Input: 
+        x, y (narray) 
+    Output:
+        x0 x value where gradient is 0. 
+    '''
+    
+    dydx = np.gradient(y, x)
+    i0 = np.nanargmin(np.abs(dydx))
+    x0 = x[i0]
+    return x0
+
+def extract_cuts(Xg, Yg, Zg):
+    ny, nx = Zg.shape
+    ix = nx // 2   # middle column
+    iy = ny // 2   # middle row
+
+    x_xz = Xg[iy, :]
+    z_xz = Zg[iy, :]
+
+    y_yz = Yg[:, ix]
+    z_yz = Zg[:, ix]
+
+    return (x_xz, z_xz), (y_yz, z_yz)
