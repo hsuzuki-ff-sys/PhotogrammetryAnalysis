@@ -58,7 +58,7 @@ def vis(x,y,z, date, ind=False, asp=False, Verdose=False):
 
 def svd_rotate(ref, pts):
     """
-    Singular Value Decompision on reference points xr, yr, zr and rotate coordinate of all points
+    Singular Value Decompision on reference points xr, yr, zr and rotate coordinate of all points.
     """
 
     # references 
@@ -84,13 +84,28 @@ def svd_rotate(ref, pts):
 
 
 def surfacefit(x, y, z, method='cubic', gridsize=200):
+    '''
+    This function take 3D coordinate information and generate surface fit using method provided. Interpolation is done in scipy.griddata package.
+    Input: 
+        x, y, z (array of float)
+            3D coordinate of points 
+        method, default 'cubic' (string)
+            method of interpolation for scipy.griddata
+        gridsize, default 200 (int)
+            gridsize of interpolation surface
+
+    Output: 
+        Xg, Yg, Zg (array of float)
+            Fitted surface
+    '''
+
+    # set up grid
     xi = np.linspace(-400, 400, gridsize)
     yi = np.linspace(-400, 400, gridsize)
     
-    # xi = np.linspace(min(x), max(x), gridsize)
-    # yi = np.linspace(min(y), max(y), gridsize)
     Xg, Yg = np.meshgrid(xi, yi)
 
+    # perform interpolation
     Zg = griddata(
         points=np.column_stack((x, y)),
         values=z,
@@ -103,6 +118,22 @@ def surfacefit(x, y, z, method='cubic', gridsize=200):
 
 from numpy.polynomial.polynomial import polyvander2d 
 def even_polyfit(x, y, z, order=4, gridsize=200): 
+    '''
+    This function take 3D coordinate information and generate surface fit to even polynomials with least square method.
+    Input: 
+        x, y, z (array of float)
+            3D coordinate of points 
+        order, default 4 (even int)
+            order of polynomial
+        gridsize, default 200 (int)
+            gridsize of interpolation surface
+
+    Output: 
+        Xg, Yg, Zg (array of float)
+            Fitted surface
+    '''
+
+    # make sure order given is even 
     if order% 2 !=0 : 
         raise ValueError("Polynomial Order have to be even.")
     
@@ -110,25 +141,22 @@ def even_polyfit(x, y, z, order=4, gridsize=200):
     # https://numpy.org/doc/2.2/reference/generated/numpy.polynomial.polynomial.polyvander2d.html 
     vander = polyvander2d(x, y, [order, order])
 
-    # get even terms
+    # get even terms only
     px, py = np.meshgrid(np.arange(order + 1), np.arange(order + 1), indexing='ij')
     even_mask = (px % 2 == 0) & (py % 2 == 0)
     mask = even_mask.ravel()
     powers = list(zip(px[even_mask].ravel(), py[even_mask].ravel()))
-
     V = vander[:, mask]
 
     # fit least squares
     coeffs, _, _, _  = np.linalg.lstsq(V, z, rcond=None)
 
+    # generate meshgrids
     xi = np.linspace(-400, 400, gridsize)
     yi = np.linspace(-400, 400, gridsize)
-
-    # xi = np.linspace(min(x), max(x), gridsize)
-    # yi = np.linspace(min(y), max(y), gridsize)
-
     Xg, Yg = np.meshgrid(xi, yi)
 
+    # generate surface with fitted coefficients
     Zg = np.zeros_like(Xg)
     for c, (px, py) in zip(coeffs, powers):
         Zg += c * (Xg**px) * (Yg**py)
@@ -137,11 +165,41 @@ def even_polyfit(x, y, z, order=4, gridsize=200):
 
 
 def write_txt_from_arrays(filename, x, y, z, date):
+    '''
+    This function generate a txt file contains 3D coordinate information of targets. 
+
+    Input:  
+        filename (string)
+            name of file to be saved 
+        x, y, z (array)
+            arrays of coordinates
+        date (string)
+            date of the measurements, used for filename. 
+    '''
     data = np.column_stack((x, y, z))
     np.savetxt(f"Data/HighPressureTesting-{date}/"+filename, data, fmt="%.6f", delimiter="\t")
 
 
 def linear_transformation(refs, arr, indr, inda):
+    '''
+    This function linearly translate array points on xy plane such that selected points overlap.
+
+    Input: 
+        refs (2D array)
+            all 3D coordinates of one dataset
+        arr (2D array)
+            all 3D coordinates of another dataset, this will be linearly tanslated to match points on refs points. 
+        indr (array)
+            array of indeces from refs to be referenced
+        inda (array)
+            array of indeces from arr to be used for translation        
+    
+    Output: 
+        x, y (array) 
+            new x, y coordinates of arr
+    '''
+    
+    
     x_ref, y_ref = refs[indr,0], refs[indr,1]
     x_arr, y_arr = arr[inda,0], arr[inda,1]
 
@@ -151,6 +209,22 @@ def linear_transformation(refs, arr, indr, inda):
     return arr[:,0] + dx, arr[:,1] + dy
 
 def align_points_2d(refs, arr):
+    '''
+    This function rotate array points on xy plane such that selected points overlap.
+
+    Input: 
+        refs (2D array)
+            3D coordinates of reference points from one dataset
+        arr (2D array)
+            3D coordinates of reference points from another dataset
+    
+    Output:
+        rotated (2D arrayd) 
+            new x, y coordinates of arr
+        R (matrix)
+            2D rotation matrix used. 
+    '''
+    # Find center of reference points
     c_ref = refs.mean(axis=0)
     c_arr = arr.mean(axis=0)
 
@@ -172,7 +246,19 @@ def align_points_2d(refs, arr):
 import numpy as np
 
 def circleRadius(b, c, d):
-  '''Ref :https://stackoverflow.com/questions/52990094/calculate-circle-given-3-points-code-explanation '''
+  '''From three points on a circle, determine center and radius of a circle. Ref :https://stackoverflow.com/questions/52990094/calculate-circle-given-3-points-code-explanation 
+  
+  Input: 
+    b, c, d (size 3 array)
+        x, y, z coordinates of each points 
+
+  Output: 
+    cx, cy (float)
+        coordinate of center of the circle
+    raidus (float)
+        radius of the circle  
+  
+  '''
   temp = c[0]**2 + c[1]**2
   bc = (b[0]**2 + b[1]**2 - temp) / 2
   cd = (temp - d[0]**2 - d[1]**2) / 2
@@ -191,10 +277,13 @@ def circleRadius(b, c, d):
 
 def min_gradient(x, y):
     '''This function find a x axis position where gradient of the curve is 0. 
+
     Input: 
         x, y (narray) 
+
     Output:
-        x0 x value where gradient is 0. 
+        x0 (float)
+            x value where gradient is 0. 
     '''
     
     dydx = np.gradient(y, x)
@@ -203,6 +292,18 @@ def min_gradient(x, y):
     return x0
 
 def extract_cuts(Xg, Yg, Zg):
+    '''This function returns pair of xz and yz cuts of the surface. 
+
+    Input: 
+        Xg, Yg, Zg (array)
+            surface 
+        
+    Output: 
+        (x_xz, z_xz) (tuple)
+            array of x,z values on xz cut
+        (y_yz, z_yz) (tuple)
+            array of y,z values on yz cut
+    '''
     ny, nx = Zg.shape
     ix = nx // 2   # middle column
     iy = ny // 2   # middle row
@@ -214,3 +315,24 @@ def extract_cuts(Xg, Yg, Zg):
     z_yz = Zg[:, ix]
 
     return (x_xz, z_xz), (y_yz, z_yz)
+
+def spherical_fit(x,y,z): 
+    '''
+    This function fit a sphere to given 3D points using least square method.
+
+    Input: 
+        x, y, z (array)
+            3D coordinates of target points
+
+    Output: 
+        R (float)
+            Radius of fitted sphere
+    '''
+
+    A = np.column_stack([x, y, z, np.ones_like(x)])
+    b = x**2 + y**2 + z**2 
+
+    c1, c2, c3, a = np.linalg.lstsq(A, b, rcond=None)[0] / 2
+    
+    R = np.sqrt(c1**2 + c2**2 + c3**2 + a)
+    return R
