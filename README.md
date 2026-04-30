@@ -24,9 +24,12 @@ Author: Hina Suzuki hsuzuki@freefallaerospace.com
 User input and lines to be checked manually is indicated as **#USER INPUT**. See examples branch for examples. 
 
 ## Design 
-We design this pipeline so it make easier f8or user to keep track of data. We define following data stage. 
+We design this pipeline so it make easier for user to keep track of data. We define following data stage. 
 
-- ``` Data/ ``` This directory hold data directly from [V-STARS](https://www.geodetic.com/v-stars/) from Geodetic Systems software and other cleaned data in ```.txt``` files.  
+- ``` Data/ ``` This directory hold data directly from [V-STARS](https://www.geodetic.com/v-stars/) from Geodetic Systems software and other cleaned data in ```.txt``` files. 
+
+    Data format is 
+    >Point Label,  X coordinate, Y coordinate, Z coordinate, X point accuracy, Y point accuracy, Z point accuracy. 
 
 - ```figs/``` This stores outouts from pipeline such as plots, that are generated from data in ```Data/```. Those plots should be presentable that can be used to deliver results from experiments. 
 
@@ -41,3 +44,5 @@ All pachages can be installed by running following.
 ```bash
 pip install -r requirements.txt
 ```
+
+
